@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 public class player : MonoBehaviour
 {
@@ -10,38 +10,85 @@ public class player : MonoBehaviour
     private Vector3 playerVelocity;
     private bool isGrounded;
 
+    // the double jump 
+    public int maxJumps = 2;      
+    private int jumpCount;
+
+   // the audio
+    public AudioSource walkSource;
+    public AudioSource backgroundMusic;
+
+    public float walkStepInterval = 0.5f;
+    private float walkTimer;
+
     void Start()
     {
+        // 
         controller = GetComponent<CharacterController>();
         if (controller == null)
         {
             Debug.LogError("PlayerController requires a CharacterController component!");
-            enabled = false; // Disable the script if no CharacterController is found
+            enabled = false;
+        }
+        // music will repet 
+        if (backgroundMusic != null)
+        {
+            backgroundMusic.loop = true;
+            backgroundMusic.Play();
         }
     }
 
     void Update()
     {
+        // like grouned cheker
         isGrounded = controller.isGrounded;
-        if (isGrounded && playerVelocity.y < 0)
+
+        // Reset jumps when on the ground
+        if (isGrounded)
         {
-            playerVelocity.y = -2f; // Small downward force to ensure grounded state
+            if (playerVelocity.y < 0)
+                playerVelocity.y = -2f;
+
+            jumpCount = 0; // Reset jumps on ground
         }
 
-        // Horizontal movement
+        // Movement
         float horizontalInput = Input.GetAxis("Horizontal");
         float verticalInput = Input.GetAxis("Vertical");
+
         Vector3 moveDirection = transform.right * horizontalInput + transform.forward * verticalInput;
         controller.Move(moveDirection * moveSpeed * Time.deltaTime);
 
-        // Jumping
-        if (Input.GetButtonDown("Jump") && isGrounded)
+        HandleWalkingSound(horizontalInput, verticalInput);
+
+        // double jump
+        if (Input.GetButtonDown("Jump") && jumpCount < maxJumps)
         {
             playerVelocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            jumpCount++;
         }
 
-        // Apply gravity
+        // gravity
         playerVelocity.y += gravity * Time.deltaTime;
         controller.Move(playerVelocity * Time.deltaTime);
+    }
+
+    void HandleWalkingSound(float horizontal, float vertical)
+    {
+        bool isMoving = (horizontal != 0 || vertical != 0) && isGrounded;
+
+        if (isMoving)
+        {
+            walkTimer -= Time.deltaTime;
+            if (walkTimer <= 0f)
+            {
+                walkSource.Play();
+                walkTimer = walkStepInterval;
+            }
+        }
+        else
+        {
+            walkTimer = 0.1f;
+        }
     }
 }
